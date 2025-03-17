@@ -6,16 +6,34 @@
     <style>
 
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'times new roman', sans-serif;
             background-color: #f5f5f5;
             margin: 0;
             padding:12px;
-            max-height: 100vh;
-            max-width: 100vw;
+            height: 90vh;
+            width: 98vw;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+        }
+        .toggle-keyboard, #settingsButton {
+            position: absolute;
+            font-size:clamp(12px, min(5vw, 5vh), 48px);
+            top: 0px;
+            background: none;
+            color: #666;
+            cursor: pointer;
+            z-index: 10;
+            outline-width: 0;
+            box-shadow: 0 0 0;
+            margin:0;
+        }
+        #settingsButton {
+            left: 12px;
+        }
+        .toggle-keyboard {
+            right: 0px;
         }
         .container {
             position: relative;
@@ -26,27 +44,9 @@
             padding:12px;
             margin: 8vw 0 0;
         }
-        .toggle-keyboard, #settingsButton {
-            position: absolute;
-            font-size:clamp(12px, 5vw, 38px);
-            top: 0px;
-            right: 0px;
-            padding: 5px 10px;
-            background: none;
-            color: #666;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 10;
-            outline-width: 0;
-            box-shadow: 0 0 0;
-            margin:0;
-        }
-        #settingsButton {
-            left: 0px;
-        }
         button {
             padding: 10px 20px;
-            font-size: clamp(12px, 5vw, 48px);
+            font-size: clamp(12px, min(5vh,10vw), 85px);
             border: none;
             border-radius: 8px;
             background: #007bff;
@@ -68,6 +68,7 @@
             position: absolute;
             margin: auto;
             width: 90%;
+            font-size:clamp(12px, min(2vh, 4vw), 4vw);
         }
         .settings > div {
             padding:0 12px;
@@ -84,15 +85,22 @@
             display:block;
             text-align:left;
         }
+        .settings label input {
+            font-size:clamp(12px, min(2vh, 4vw), 4vw);
+        }
+        .settings button {
+            font-size: 1em;
+            margin-top: 1em;
+        }
         .question {
-            font-size: clamp(12px, 12vw, 48px);
+            font-size: clamp(12px, min(12vh, 12vw), 12vw);
             font-weight:bold;
             margin: auto 0;
             display: none;
         }
         #answer {
-            font-size: clamp(12px, 11vw, 48px);
-            width: 24vw;
+            font-size: clamp(12px, min(12vh, 12vw), 12vw);
+            width: 2em;
             text-align: center;
             padding: 5px 10px;
             border: 2px solid #ddd;
@@ -103,7 +111,9 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 5px;
-            max-width: 98vw;
+            width: min(98vw,120vh);
+            height: min(66vh, 120vw);
+            margin-top:1em;
             display: none;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -115,7 +125,8 @@
             color: #333;
             cursor: pointer;
             transition: background 0.2s;
-            font-size: clamp(8px, 9vw, 32px);
+            min-height: min(12vh, 12vw);
+            margin:0;
         }
         .keyboard button:hover {
             background: #e0e0e0;
@@ -137,35 +148,40 @@
         }
         .progress {
             color: #666;
-            font-size: min(4vw,3vh);
+            font-size: min(3vw,3vh);
             position:absolute;
-            bottom:5px;
+            top:12px;
         }
         .results {
            white-space: pre-wrap;
            background: #fafafa;
            border: 1px solid #ddd;
            border-radius: 8px;
+           box-shadow:0 2px 5px gray;
            padding: 5px;
-           margin: 12px 8px 38px;
-           width:100%;
+           width:calc(100vw - 12px);
            text-align: left;
            display: none;
-           font-size: clamp(8px, 5vw, 32px);
+           font-size: clamp(8px, min(5vw, 5vh), 48px);
            overflow: auto;
+           position:absolute;
+           bottom:0;
+           max-height:50vh;
         }
     </style>
 </head>
 <body>
     <button id="settingsButton" onclick="toggleSettings()">⚙ </button>
     <button class="toggle-keyboard" onclick="toggleKeyboard()">⌨</button>
+    <div class="progress" id="progress"></div>
+    <div id="results" class="results"></div>
     <div class="container">
         <button id="startButton" onclick="startQuiz()">Start</button>
         <div class="settings" id="settings">
             <h3>设置</h3>
             <div>
                 <label>题目数量: <input type="number" id="questionCount" value="120" min="1"></label>
-                <label>超时时间: <input type="number" id="timeout" value="5" min="1"> 秒</label>
+                <label>超时时间: <input type="numeric" id="timeout" value="5" min="1"> 秒</label>
             </div>
             <div>
                 <label><input type="radio" name="questionType" value="addition"> 仅加法</label>
@@ -178,32 +194,28 @@
             </div>
             <button onclick="saveSettings()">保存并开始</button>
         </div>
-
         <div class="question" id="questionBox">
             <span id="questionText"></span> = 
-            <input type="number" id="answer" autocomplete="off">
+            <input type="tel" id="answer" autocomplete="off">
         </div>
-
-        <div class="keyboard" id="keyboard">
-            <button onclick="inputNumber('7')">7</button>
-            <button onclick="inputNumber('8')">8</button>
-            <button onclick="inputNumber('9')">9</button>
-            <button onclick="inputNumber('4')">4</button>
-            <button onclick="inputNumber('5')">5</button>
-            <button onclick="inputNumber('6')">6</button>
-            <button onclick="inputNumber('1')">1</button>
-            <button onclick="inputNumber('2')">2</button>
-            <button onclick="inputNumber('3')">3</button>
-            <div class="keyboard-row">
-                <button class="negative-btn" onclick="inputNegative()">-</button>
-                <button onclick="inputNumber('0')">0</button>
-                <button class="clear-btn" onclick="clearInput()">C</button>
-            </div>
-        </div>
-
     </div>
-        <div class="progress" id="progress"></div>
-        <div id="results" class="results"></div>
+    
+    <div class="keyboard" id="keyboard">
+        <button onclick="inputNumber('7')">7</button>
+        <button onclick="inputNumber('8')">8</button>
+        <button onclick="inputNumber('9')">9</button>
+        <button onclick="inputNumber('4')">4</button>
+        <button onclick="inputNumber('5')">5</button>
+        <button onclick="inputNumber('6')">6</button>
+        <button onclick="inputNumber('1')">1</button>
+        <button onclick="inputNumber('2')">2</button>
+        <button onclick="inputNumber('3')">3</button>
+        <div class="keyboard-row">
+            <button class="negative-btn" onclick="inputNegative()">-</button>
+            <button onclick="inputNumber('0')">0</button>
+            <button class="clear-btn" onclick="clearInput()">C</button>
+        </div>
+    </div>
 
     <script>
         let quiz = {
@@ -299,7 +311,6 @@
 
         function showResults() {
             document.getElementById('questionBox').style.display = 'none';
-            document.getElementById('keyboard').style.display = 'none';
             document.getElementById('startButton').style.display = 'inline';
             
             let totalTime = (Date.now() - quiz.startTime) / 1000;
