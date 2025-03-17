@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>MathQuiz</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .settings {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fafafa;
+            display: none;
+        }
+        .question {
+            font-size: 28px;
+            margin: 20px 0;
+            display: none;
+        }
+        #answer {
+            font-size: 24px;
+            width: 120px;
+            text-align: center;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 10px auto;
+        }
+        .progress {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin: 15px auto 0;
+            max-width: 320px;
+            display: none;
+        }
+        .keyboard button {
+            padding: 20px;
+            font-size: 24px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+            color: #333;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .keyboard button:hover {
+            background: #e0e0e0;
+        }
+        .keyboard-row {
+            grid-column: span 3;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 5px;
+        }
+        .toggle-keyboard, #settingsButton {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 5px 10px;
+            background: none;
+            border: 1px solid #ddd;
+            color: #666;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        #settingsButton {
+            left: 15px;
+        }
+        .results {
+            white-space: pre-wrap;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            display: none;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .negative-btn {
+            font-size: 20px;
+            line-height: 1;
+        }
+        .clear-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="toggle-keyboard" onclick="toggleKeyboard()">⌨</button>
+        <h1></h1>
+        <button id="settingsButton" onclick="toggleSettings()">⚙ </button>
+        <button id="startButton" onclick="startQuiz()">Start</button>
+
+        <div class="settings" id="settings">
+            <h3>设置</h3>
+            <div>
+                <label>题目数量: <input type="number" id="questionCount" value="120" min="1"></label>
+                <label>超时时间: <input type="number" id="timeout" value="5" min="1"> 秒</label>
+            </div>
+            <div>
+                <h4>题目类型:</h4>
+                <label><input type="radio" name="questionType" value="addition"> 仅加法</label>
+                <label><input type="radio" name="questionType" value="subtraction"> 仅减法</label>
+                <label><input type="radio" name="questionType" value="mixed" checked> 加减混合</label>
+            </div>
+            <div>
+                <label><input type="checkbox" id="allowNegative"> 允许答案为负数</label>
+                <label><input type="checkbox" id="easyMode" checked> 降低难度（最多一个二位数）</label>
+            </div>
+            <button onclick="saveSettings()">保存并开始</button>
+        </div>
+
+        <div class="question" id="questionBox">
+            <span id="questionText"></span> = 
+            <input type="number" id="answer" autocomplete="off">
+        </div>
+
+        <div class="keyboard" id="keyboard">
+            <button onclick="inputNumber('7')">7</button>
+            <button onclick="inputNumber('8')">8</button>
+            <button onclick="inputNumber('9')">9</button>
+            <button onclick="inputNumber('4')">4</button>
+            <button onclick="inputNumber('5')">5</button>
+            <button onclick="inputNumber('6')">6</button>
+            <button onclick="inputNumber('1')">1</button>
+            <button onclick="inputNumber('2')">2</button>
+            <button onclick="inputNumber('3')">3</button>
+            <div class="keyboard-row">
+                <button class="negative-btn" onclick="inputNegative()">-</button>
+                <button onclick="inputNumber('0')">0</button>
+                <button class="clear-btn" onclick="clearInput()">C</button>
+            </div>
+        </div>
+
+        <div class="progress" id="progress"></div>
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        let quiz = {
+            n: 120,
+            timeout: 5,
+            questionType: 'mixed',
+            allowNegative: false,
+            easyMode: true,
+            currentQuestion: 0,
+            correctAnswers: 0,
+            questions: [],
+            answers: [],
+            wrongQuestions: [],
+            startTime: null
+        };
+
+        function toggleSettings() {
+            document.getElementById('settings').style.display = 
+                document.getElementById('settings').style.display === 'block' ? 'none' : 'block';
+        }
+
+        function saveSettings() {
+            quiz.n = parseInt(document.getElementById('questionCount').value);
+            quiz.timeout = parseInt(document.getElementById('timeout').value);
+            quiz.questionType = document.querySelector('input[name="questionType"]:checked').value;
+            quiz.allowNegative = document.getElementById('allowNegative').checked;
+            quiz.easyMode = document.getElementById('easyMode').checked;
+            toggleSettings();
+            startQuiz();
+        }
+
+        function generateQuestion() {
+            while (true) {
+                let a = Math.floor(Math.random() * 99) + 1;
+                let b = Math.floor(Math.random() * 99) + 1;
+                let operator = getOperator();
+                
+                let question = `${a} ${operator} ${b}`;
+                let answer = operator === '+' ? a + b : a - b;
+
+                if (!quiz.allowNegative && answer < 0) continue;
+                if (quiz.easyMode && a > 9 && b > 9) continue;
+
+                return { question, answer };
+            }
+        }
+
+        function getOperator() {
+            if (quiz.questionType === 'addition') return '+';
+            if (quiz.questionType === 'subtraction') return '-';
+            return Math.random() < 0.5 ? '+' : '-';
+        }
+
+        function startQuiz() {
+            quiz.questions = [];
+            quiz.answers = [];
+            quiz.wrongQuestions = [];
+            quiz.currentQuestion = 0;
+            quiz.correctAnswers = 0;
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('results').innerHTML = '';
+
+            for (let i = 0; i < quiz.n; i++) {
+                let { question, answer } = generateQuestion();
+                quiz.questions.push(question);
+                quiz.answers.push(answer);
+            }
+
+            document.getElementById('startButton').style.display = 'none';
+            document.getElementById('questionBox').style.display = 'block';
+            document.getElementById('answer').focus();
+            quiz.startTime = Date.now();
+            showQuestion();
+        }
+
+        function inputNegative() {
+            if (quiz.allowNegative) {
+                const answerInput = document.getElementById('answer');
+                if (!answerInput.value.includes('-')) {
+                    answerInput.value = '-' + answerInput.value;
+                }
+            }
+        }
+
+        function toggleKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            keyboard.style.display = keyboard.style.display === 'grid' ? 'none' : 'grid';
+        }
+
+        document.getElementById('answer').addEventListener('input', function(e) {
+            checkAnswerLength();
+        });
+
+        function showResults() {
+            document.getElementById('questionBox').style.display = 'none';
+            document.getElementById('keyboard').style.display = 'none';
+            document.getElementById('startButton').style.display = 'inline';
+            
+            let totalTime = (Date.now() - quiz.startTime) / 1000;
+            let accuracy = (quiz.correctAnswers / quiz.n * 100).toFixed(2);
+            
+            let resultText = `答对了 ${quiz.correctAnswers}/${quiz.n} 道题\n正确率: ${accuracy}%\n`;
+            resultText += `答题耗时: ${totalTime.toFixed(2)} 秒\n`;
+            resultText += `平均耗时: ${(totalTime / quiz.n).toFixed(2)} 秒/题\n\n`;
+
+            if (quiz.wrongQuestions.length > 0) {
+                resultText += "答错的题目:\n";
+                quiz.wrongQuestions.forEach((item, index) => {
+                    resultText += `${index + 1}. ${item.question} = ${item.answer}\n`;
+                });
+            } else {
+                resultText += "恭喜！你全部答对了！";
+            }
+
+            document.getElementById('results').innerHTML = 
+                `<pre>${resultText}</pre>`;
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function showQuestion() {
+            if (quiz.currentQuestion >= quiz.n) {
+                showResults();
+                return;
+            }
+
+            document.getElementById('questionText').textContent = 
+                quiz.questions[quiz.currentQuestion];
+            document.getElementById('answer').value = '';
+            document.getElementById('progress').textContent = 
+                `进度: ${quiz.currentQuestion + 1}/${quiz.n}`;
+            startTimer();
+        }
+
+        function inputNumber(number) {
+            let answerInput = document.getElementById('answer');
+            answerInput.value += number;
+            checkAnswerLength();
+        }
+
+        function clearInput() {
+            let answerInput = document.getElementById('answer');
+            answerInput.value = '';
+        }
+
+        function checkAnswerLength() {
+            let answerInput = document.getElementById('answer');
+            let correctAnswer = quiz.answers[quiz.currentQuestion];
+            let userAnswer = parseInt(answerInput.value);
+
+            if (answerInput.value.length === String(correctAnswer).length && !isNaN(userAnswer)) {
+                if (userAnswer === correctAnswer) {
+                    quiz.correctAnswers++;
+                } else {
+                    quiz.wrongQuestions.push({
+                        question: quiz.questions[quiz.currentQuestion],
+                        answer: userAnswer
+                    });
+                }
+                clearInterval(quiz.timerId);
+                quiz.currentQuestion++;
+                showQuestion();
+            }
+        }
+        
+        function skipQuestion() {
+            clearInterval(quiz.timerId);
+            quiz.wrongQuestions.push({
+                question: quiz.questions[quiz.currentQuestion],
+                answer: '超时'
+            });
+            quiz.currentQuestion++;
+            showQuestion();
+        }
+        
+        function startTimer() {
+            quiz.timeLeft = quiz.timeout;
+            //updateTimerDisplay();
+            if (quiz.timerId) clearInterval(quiz.timerId);
+            quiz.timerId = setInterval(() => {
+                quiz.timeLeft--;
+                //updateTimerDisplay();
+                if (quiz.timeLeft <= 0) {
+                    skipQuestion();
+                }
+            }, 1000);
+        }
+        
+    </script>
+</body>
+</html>
